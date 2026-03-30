@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SentimentAI — ML Powered Dashboard</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #070810;
+      --surface: #0f1019;
+      --surface2: #161824;
+      --border: #1f2235;
+      --border2: #2a2d42;
+      --pos: #0dffb0;
+      --neg: #ff3d6b;
+      --neu: #ffcc00;
+      --accent: #4f8eff;
+      --purple: #b47dff;
+      --text: #dde2f0;
+      --muted: #606680;
+      --gpos: rgba(13, 255, 176, 0.12);
+      --gneg: rgba(255, 61, 107, 0.12);
+      --gneu: rgba(255, 204, 0, 0.10);
+      --gacc: rgba(79, 142, 255, 0.15);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: 'Instrument Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(79, 142, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79, 142, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Glow blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .blob1 {
+      width: 500px;
+      height: 500px;
+      top: -100px;
+      left: -100px;
+      background: rgba(79, 142, 255, 0.07);
+    }
+
+    .blob2 {
+      width: 400px;
+      height: 400px;
+      bottom: -80px;
+      right: -80px;
+      background: rgba(180, 125, 255, 0.06);
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 10px;
+      z-index: 200;
+      background: rgba(7, 8, 16, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+    }
+
+    .logo-text {
+      background: linear-gradient(135deg, #fff 40%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-pills {
+      display: flex;
+      gap: 0px;
+      align-items: center;
+    }
+
+    .pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .pill-ml {
+      background: var(--gacc);
+      border: 1px solid rgba(79, 142, 255, 0.3);
+      color: var(--accent);
+    }
+
+    .pill-live {
+      background: var(--gpos);
+      border: 1px solid rgba(13, 255, 176, 0.3);
+      color: var(--pos);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .live-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--pos);
+      animation: blink 1.4s ease infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.2
+      }
+    }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 32px 40px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    /* ── ML ENGINE STRIP ── */
+    .engine-strip {
+      background: linear-gradient(135deg, rgba(79, 142, 255, 0.08), rgba(180, 125, 255, 0.06));
+      border: 1px solid rgba(79, 142, 255, 0.2);
+      border-radius: 14px;
+      padding: 18px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 28px;
+      align-items: center;
+      animation: fadeUp .4s ease both;
+    }
+
+    .engine-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .engine-key {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+    }
+
+    .engine-val {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .engine-val.highlight {
+      color: var(--pos);
+    }
+
+    .accuracy-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .acc-track {
+      width: 110px;
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .acc-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--pos), var(--accent));
+      width: 0;
+      transition: width 1.2s cubic-bezier(.4, 0, .2, 1) .6s;
+    }
+
+    /* ── INPUT PANEL ── */
+    .input-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 32px;
+      animation: fadeUp .45s ease both;
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 3px;
+      height: 16px;
+      border-radius: 2px;
+      background: linear-gradient(var(--accent), var(--purple));
+      display: block;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .textarea-wrap {
+      flex: 1;
+      min-width: 240px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 78px;
+      resize: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Instrument Sans', sans-serif;
+      font-size: 0.94rem;
+      padding: 13px 16px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 142, 255, 0.1);
+    }
+
+    textarea::placeholder {
+      color: var(--muted);
+    }
+
+    .btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 13px 24px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.87rem;
+      transition: transform .15s, box-shadow .2s, opacity .2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(79, 142, 255, 0.3);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 28px rgba(79, 142, 255, 0.45);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--border2);
+      color: var(--text);
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .csv-row {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .file-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.83rem;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+
+    .file-label:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    #csvInput {
+      display: none;
+    }
+
+    #csvName {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* ── RESULT BANNER ── */
+    #resultBanner {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      /* 🔥 center */
+      transform: translateX(-50%);
+      /* 🔥 perfect center */
+
+      width: 400px;
+      padding: 14px 16px;
+      border-radius: 10px;
+
+      z-index: 999;
+      cursor: pointer;
+
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+
+      /* animation: slideDown .3s ease; */
+    }
+
+    #resultBanner.positive {
+      background: var(--gpos);
+      border: 1px solid rgba(13, 255, 176, 0.3);
+    }
+
+    #resultBanner.negative {
+      background: var(--gneg);
+      border: 1px solid rgba(255, 61, 107, 0.3);
+    }
+
+    #resultBanner.neutral {
+      background: var(--gneu);
+      border: 1px solid rgba(255, 204, 0, 0.3);
+    }
+
+    .result-label {
+      font-size: 1.3rem;
+    }
+
+    .result-body {
+      flex: 1;
+    }
+
+    .result-sentiment {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    #resultBanner.positive .result-sentiment {
+      color: var(--pos);
+    }
+
+    #resultBanner.negative .result-sentiment {
+      color: var(--neg);
+    }
+
+    #resultBanner.neutral .result-sentiment {
+      color: var(--neu);
+    }
+
+    .result-reason {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: 400;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1.5;
+    }
+
+    /* ── STATS CARDS ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media(max-width:900px) {
+      .stats-row {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 22px 18px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp .5s ease both;
+      transition: transform .2s, border-color .2s;
+      cursor: default;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border2);
+    }
+
+    .stat-glow {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      top: -20px;
+      right: -15px;
+      filter: blur(22px);
+      opacity: .55;
+    }
+
+    .s-pos .stat-glow {
+      background: var(--pos);
+    }
+
+    .s-neg .stat-glow {
+      background: var(--neg);
+    }
+
+    .s-neu .stat-glow {
+      background: var(--neu);
+    }
+
+    .s-tot .stat-glow {
+      background: var(--accent);
+    }
+
+    .stat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .stat-icon {
+      font-size: 1.5rem;
+    }
+
+    .stat-pct {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .s-pos .stat-pct {
+      background: var(--gpos);
+      color: var(--pos);
+    }
+
+    .s-neg .stat-pct {
+      background: var(--gneg);
+      color: var(--neg);
+    }
+
+    .s-neu .stat-pct {
+      background: var(--gneu);
+      color: var(--neu);
+    }
+
+    .s-tot .stat-pct {
+      background: var(--gacc);
+      color: var(--accent);
+    }
+
+    .stat-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+      margin: 10px 0 2px;
+    }
+
+    .s-pos .stat-val {
+      color: var(--pos)
+    }
+
+    .s-neg .stat-val {
+      color: var(--neg)
+    }
+
+    .s-neu .stat-val {
+      color: var(--neu)
+    }
+
+    .s-tot .stat-val {
+      color: var(--accent)
+    }
+
+    .stat-lbl {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 500;
+      margin-bottom: 14px;
+    }
+
+    .stat-bar {
+      height: 3px;
+      border-radius: 2px;
+      background: var(--border);
+      overflow: hidden;
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      width: 0;
+      transition: width .9s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .s-pos .stat-bar-fill {
+      background: var(--pos)
+    }
+
+    .s-neg .stat-bar-fill {
+      background: var(--neg)
+    }
+
+    .s-neu .stat-bar-fill {
+      background: var(--neu)
+    }
+
+    .s-tot .stat-bar-fill {
+      background: linear-gradient(90deg, var(--accent), var(--purple))
+    }
+
+    /* ── CHARTS ── */
+    .charts-main {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 18px;
+    }
+
+    @media(max-width:860px) {
+      .charts-main {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .charts-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    @media(max-width:860px) {
+      .charts-bottom {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+      animation: fadeUp .55s ease both;
+      height: 260px;
+    }
+
+    .chart-head {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .chart-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-bottom: 18px;
+      display: block;
+    }
+
+    /* ── WORD CLOUD ── */
+    #wordCloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      padding: 4px 0;
+      min-height: 90px;
+      align-items: center;
+    }
+
+    .wc-tag {
+      padding: 4px 11px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: default;
+      transition: transform .15s;
+      font-size: 0.8rem;
+    }
+
+    .wc-tag:hover {
+      transform: scale(1.12);
+    }
+
+    /* ── FEED ── */
+    .feed-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 24px;
+      animation: fadeUp .6s ease both;
+    }
+
+    .feed-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .feed-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .feed-list::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 2px;
+    }
+
+    .feed-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 13px 15px;
+      background: var(--surface2);
+      border-radius: 10px;
+      border-left: 3px solid transparent;
+      transition: transform .15s;
+      animation: fadeUp .3s ease both;
+    }
+
+    .feed-item:hover {
+      transform: translateX(4px);
+    }
+
+    .feed-item.positive {
+      border-color: var(--pos);
+    }
+
+    .feed-item.negative {
+      border-color: var(--neg);
+    }
+
+    .feed-item.neutral {
+      border-color: var(--neu);
+    }
+
+    .feed-ico {
+      font-size: 1.1rem;
+      padding-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .feed-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .feed-text {
+      font-size: 0.86rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .feed-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 5px;
+      flex-wrap: wrap;
+    }
+
+    .feed-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .feed-badge.positive {
+      background: var(--gpos);
+      color: var(--pos);
+    }
+
+    .feed-badge.negative {
+      background: var(--gneg);
+      color: var(--neg);
+    }
+
+    .feed-badge.neutral {
+      background: var(--gneu);
+      color: var(--neu);
+    }
+
+    .feed-reason {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-style: italic;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 360px;
+    }
+
+    .feed-conf {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    /* ── PROCESSING QUEUE ── */
+    .queue-strip {
+      display: none;
+      background: var(--gacc);
+      border: 1px solid rgba(79, 142, 255, 0.25);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--accent);
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .queue-strip.show {
+      display: flex;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* Delay cascade */
+    .stats-row .stat-card:nth-child(1) {
+      animation-delay: .05s
+    }
+
+    .stats-row .stat-card:nth-child(2) {
+      animation-delay: .10s
+    }
+
+    .stats-row .stat-card:nth-child(3) {
+      animation-delay: .15s
+    }
+
+    .stats-row .stat-card:nth-child(4) {
+      animation-delay: .20s
+    }
+
+    #barChart {
+      height: 190px !important;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="resultBanner">
+    <div class="result-label" id="resultEmoji"></div>
+    <div class="result-body">
+      <div class="result-sentiment" id="resultSentiment"></div>
+      <div class="result-reason" id="resultReason"></div>
+    </div>
+  </div>
+
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <span class="logo-text">SentimentAI</span>
+    </div>
+    <div class="header-pills">
+      <div class="pill pill-ml">ML · NLP Model</div>
+      <div class="pill pill-live">
+        <div class="live-dot"></div>LIVE
+      </div>
+    </div>
+  </header>
+
+  <!-- ── MAIN ── -->
+  <main>
+
+    <!-- ML Engine Strip -->
+    <div class="engine-strip">
+
+      <div class="engine-item">
+        <span class="engine-key">Approach</span>
+        <span class="engine-val">TF-IDF + Logistic Regression Style</span>
+      </div>
+      <div class="engine-item">
+        <span class="engine-key">NLP Library</span>
+        <span class="engine-val">Scikit-learn Model</span>
+      </div>
+      <div class="engine-item">
+        <span class="engine-key">Classes</span>
+        <span class="engine-val">Positive · Negative · Neutral</span>
+      </div>
+      <div class="engine-item">
+        <span class="engine-key">Confidence Score</span>
+        <div class="accuracy-row">
+          <div class="acc-track">
+            <div class="acc-fill" id="accFill"></div>
+          </div>
+          <span class="engine-val highlight" id="avgConf">—</span>
+        </div>
+      </div>
+      <div class="engine-item">
+        <span class="engine-key">Analyzed</span>
+        <span class="engine-val highlight" id="engineTotal">0 texts</span>
+      </div>
+    </div>
+
+    <!-- Input Panel -->
+    <div class="input-panel">
+      <div class="panel-title">Analyze Social Media Text</div>
+      <div class="input-row">
+        <div class="textarea-wrap">
+          <textarea id="inputText" rows="3"
+            placeholder="Enter a tweet, comment, or review…  e.g. 'This product is absolutely amazing, best purchase ever!'  (Ctrl+Enter to analyze)"></textarea>
+        </div>
+        <div class="btns">
+          <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeSingle()">
+            <span>Analyze</span>
+            <div class="spinner" id="singleSpinner"></div>
+          </button>
+          <button class="btn btn-ghost" onclick="loadSample()">Load Sample</button>
+          <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Queue strip -->
+      <div class="queue-strip" id="queueStrip">
+        <div class="spinner" style="display:block;border-top-color:var(--accent);border-color:rgba(79,142,255,0.2)">
+        </div>
+        <span id="queueMsg">Processing with ML model…</span>
+      </div>
+
+
+
+      <!-- CSV Upload -->
+      <div class="csv-row">
+        <label class="file-label" for="csvInput">📂 Upload CSV</label>
+        <input type="file" id="csvInput" accept=".csv" onchange="handleCSV(event)" />
+        <span id="csvName">No file selected</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card s-pos">
+        <div class="stat-glow"></div>
+        <div class="stat-top">
+          <div class="stat-icon">😊</div>
+          <div class="stat-pct" id="posPct">0%</div>
+        </div>
+        <div class="stat-val" id="posCount">0</div>
+        <div class="stat-lbl">Positive Comments</div>
+        <div class="stat-bar">
+          <div class="stat-bar-fill" id="posBar"></div>
+        </div>
+      </div>
+      <div class="stat-card s-neg">
+        <div class="stat-glow"></div>
+        <div class="stat-top">
+          <div class="stat-icon">😠</div>
+          <div class="stat-pct" id="negPct">0%</div>
+        </div>
+        <div class="stat-val" id="negCount">0</div>
+        <div class="stat-lbl">Negative Comments</div>
+        <div class="stat-bar">
+          <div class="stat-bar-fill" id="negBar"></div>
+        </div>
+      </div>
+      <div class="stat-card s-neu">
+        <div class="stat-glow"></div>
+        <div class="stat-top">
+          <div class="stat-icon">😐</div>
+          <div class="stat-pct" id="neuPct">0%</div>
+        </div>
+        <div class="stat-val" id="neuCount">0</div>
+        <div class="stat-lbl">Neutral Comments</div>
+        <div class="stat-bar">
+          <div class="stat-bar-fill" id="neuBar"></div>
+        </div>
+      </div>
+      <div class="stat-card s-tot">
+        <div class="stat-glow"></div>
+        <div class="stat-top">
+          <div class="stat-icon">📊</div>
+          <div class="stat-pct" id="totPct">ML</div>
+        </div>
+        <div class="stat-val" id="totCount">0</div>
+        <div class="stat-lbl">Total Analyzed</div>
+        <div class="stat-bar">
+          <div class="stat-bar-fill" id="totBar" style="width:100%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Main -->
+    <div class="charts-main">
+      <div class="chart-card">
+        <div class="chart-head">Sentiment Timeline</div>
+        <span class="chart-sub">Distribution across analyzed batches</span>
+        <canvas id="lineChart" height="210"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-head">Breakdown</div>
+        <span class="chart-sub">Percentage distribution</span>
+        <canvas id="donutChart" height="210"></canvas>
+      </div>
+    </div>
+
+    <!-- Charts Bottom -->
+    <div class="charts-bottom">
+      <div class="chart-card">
+        <div class="chart-head">Sentiment Comparison</div>
+        <span class="chart-sub">Bar chart — counts per class</span>
+        <canvas id="barChart" height="190"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-head">Keyword Cloud</div>
+        <span class="chart-sub">Most frequent terms in analyzed text</span>
+        <div id="wordCloud">
+          <span style="color:var(--muted);font-size:0.82rem">Analyze some text to see keywords here…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feed -->
+    <div class="feed-card">
+      <div class="feed-top">
+        <div class="chart-head" style="margin:0">📝 ML Analysis Feed</div>
+        <div class="pill pill-live" style="font-size:.65rem">
+          <div class="live-dot"></div>REAL-TIME
+        </div>
+      </div>
+      <div class="feed-list" id="feedList">
+        <div style="color:var(--muted);font-size:0.85rem;padding:10px">
+          No data yet — enter text above or click "Load Sample" to see ML analysis in action.
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+
+
+    const SYSTEM_PROMPT = `You are an expert NLP sentiment analysis model, similar to a trained Logistic Regression classifier with TF-IDF features.
+
+Your job: Analyze social media text and classify sentiment.
+
+Respond ONLY with valid JSON in this exact format — no extra text, no markdown backticks:
+{
+  "sentiment": "positive" | "negative" | "neutral",
+  "confidence": <number 0-100>,
+  "score": <polarity score from -1.0 to 1.0>,
+  "keywords": ["word1","word2","word3"],
+  "reason": "<one short sentence explaining the classification>"
+}
+
+Rules:
+- positive: text expresses satisfaction, praise, happiness, excitement
+- negative: text expresses dissatisfaction, complaint, anger, disappointment
+- neutral: text is factual, mixed, or neither clearly positive nor negative
+- confidence: how confident you are (50-99)
+- score: -1.0 (very negative) to +1.0 (very positive), 0 = neutral
+- keywords: 2-4 most sentiment-bearing words from the text
+- reason: brief NLP-style explanation`;
+
+    async function callMLModel(text) {
+      const response = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text })
+      });
+
+      return await response.json();
+    }
+
+    // ═══════════════════════════════════════════════
+    //  STATE
+    // ═══════════════════════════════════════════════
+    let results = [];
+    let lineChart, donutChart, barChart;
+    let isAnalyzing = false;
+
+    const EMOJIS = { positive: '😊', negative: '😠', neutral: '😐' };
+    const COLORS = { positive: '#0dffb0', negative: '#ff3d6b', neutral: '#ffcc00' };
+    const WC_COLORS = ['#0dffb0', '#ff3d6b', '#ffcc00', '#4f8eff', '#b47dff', '#38bdf8', '#f472b6'];
+
+    // ── Init Charts ──
+    function initCharts() {
+      const tc = '#606680', gc = 'rgba(255,255,255,0.04)';
+      const mono = { family: 'JetBrains Mono', size: 10 };
+
+      lineChart = new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            { label: 'Positive', data: [], borderColor: '#0dffb0', backgroundColor: 'rgba(13,255,176,0.08)', tension: .4, fill: true, pointRadius: 3 },
+            { label: 'Negative', data: [], borderColor: '#ff3d6b', backgroundColor: 'rgba(255,61,107,0.08)', tension: .4, fill: true, pointRadius: 3 },
+            { label: 'Neutral', data: [], borderColor: '#ffcc00', backgroundColor: 'rgba(255,204,0,0.05)', tension: .4, fill: true, pointRadius: 3 },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { labels: { color: tc, font: mono } } },
+          scales: {
+            x: { ticks: { color: tc, font: mono }, grid: { color: gc } },
+            y: { ticks: { color: tc, font: mono }, grid: { color: gc }, beginAtZero: true }
+          }
+        }
+      });
+
+      donutChart = new Chart(document.getElementById('donutChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Positive', 'Negative', 'Neutral'],
+          datasets: [{ data: [0, 0, 0], backgroundColor: ['#0dffb0', '#ff3d6b', '#ffcc00'], borderWidth: 0, hoverOffset: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '68%',
+          plugins: { legend: { labels: { color: tc, font: mono } } }
+        }
+      });
+
+      barChart = new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Positive', 'Negative', 'Neutral'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: ['rgba(13,255,176,0.65)', 'rgba(255,61,107,0.65)', 'rgba(255,204,0,0.65)'],
+            borderRadius: 7, borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: tc, font: mono }, grid: { display: false } },
+            y: { ticks: { color: tc, font: mono }, grid: { color: gc }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // ── Update Everything ──
+    function updateDashboard() {
+      const pos = results.filter(r => r.sentiment === 'positive').length;
+      const neg = results.filter(r => r.sentiment === 'negative').length;
+      const neu = results.filter(r => r.sentiment === 'neutral').length;
+      const tot = results.length;
+
+      // Stats
+      document.getElementById('posCount').textContent = pos;
+      document.getElementById('negCount').textContent = neg;
+      document.getElementById('neuCount').textContent = neu;
+      document.getElementById('totCount').textContent = tot;
+
+      const pct = v => tot ? Math.round(v / tot * 100) + '%' : '0%';
+      document.getElementById('posPct').textContent = pct(pos);
+      document.getElementById('negPct').textContent = pct(neg);
+      document.getElementById('neuPct').textContent = pct(neu);
+
+      document.getElementById('posBar').style.width = pct(pos);
+      document.getElementById('negBar').style.width = pct(neg);
+      document.getElementById('neuBar').style.width = pct(neu);
+
+      document.getElementById('engineTotal').textContent = tot + ' texts';
+
+      // Avg confidence
+      if (tot > 0) {
+        const avgC = Math.round(results.reduce((a, r) => a + (r.confidence || 75), 0) / tot);
+        document.getElementById('avgConf').textContent = avgC + '%';
+        document.getElementById('accFill').style.width = avgC + '%';
+      }
+
+      // Charts
+      donutChart.data.datasets[0].data = [pos, neg, neu];
+      donutChart.update('active');
+      barChart.data.datasets[0].data = [pos, neg, neu];
+      barChart.update('active');
+
+      // Line — batches of 5
+      const bs = 5, labels = [], posA = [], negA = [], neuA = [];
+      for (let i = 0; i < Math.ceil(results.length / bs); i++) {
+        const b = results.slice(i * bs, (i + 1) * bs);
+        labels.push(`#${i * bs + 1}-${Math.min((i + 1) * bs, results.length)}`);
+        posA.push(b.filter(r => r.sentiment === 'positive').length);
+        negA.push(b.filter(r => r.sentiment === 'negative').length);
+        neuA.push(b.filter(r => r.sentiment === 'neutral').length);
+      }
+      lineChart.data.labels = labels;
+      lineChart.data.datasets[0].data = posA;
+      lineChart.data.datasets[1].data = negA;
+      lineChart.data.datasets[2].data = neuA;
+      lineChart.update('active');
+
+      buildWordCloud();
+      buildFeed();
+    }
+
+    // ── Word Cloud from ML keywords ──
+    function buildWordCloud() {
+      const freq = {};
+      results.forEach(r => {
+        (r.keywords || []).forEach(w => {
+          const k = w.toLowerCase();
+          freq[k] = (freq[k] || 0) + 1;
+        });
+        // also tokenize text
+        r.text.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).forEach(w => {
+          if (w.length > 3 && !STOP.has(w)) freq[w] = (freq[w] || 0) + 0.3;
+        });
+      });
+
+      const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 24);
+      const max = sorted[0]?.[1] || 1;
+      const container = document.getElementById('wordCloud');
+      container.innerHTML = '';
+
+      if (!sorted.length) {
+        container.innerHTML = '<span style="color:var(--muted);font-size:0.82rem">Analyze some text to see keywords here…</span>';
+        return;
+      }
+
+      sorted.forEach(([word, count]) => {
+        const span = document.createElement('span');
+        span.className = 'wc-tag';
+        const size = 0.72 + (count / max) * 0.9;
+        const color = WC_COLORS[Math.floor(Math.random() * WC_COLORS.length)];
+        span.style.cssText = `font-size:${size}rem;color:${color};background:${color}18;`;
+        span.textContent = word;
+        container.appendChild(span);
+      });
+    }
+
+    const STOP = new Set(['the', 'and', 'for', 'are', 'was', 'were', 'this', 'that', 'with', 'from', 'have', 'been', 'will', 'they', 'their', 'your', 'our', 'its', 'but', 'not', 'also', 'just', 'more', 'very', 'would', 'could', 'should', 'which', 'when', 'what', 'who', 'how']);
+
+    // ── Feed ──
+    function buildFeed() {
+      const feedList = document.getElementById('feedList');
+      const recent = results.slice(-20).reverse();
+      if (!recent.length) {
+        feedList.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:10px">No data yet — enter text above or click "Load Sample" to see ML analysis in action.</div>';
+        return;
+      }
+      feedList.innerHTML = recent.map(r => `
+    <div class="feed-item ${r.sentiment}">
+      <div class="feed-ico">${EMOJIS[r.sentiment]}</div>
+      <div class="feed-body">
+        <div class="feed-text">${escHtml(r.text)}</div>
+        <div class="feed-meta">
+          <span class="feed-badge ${r.sentiment}">${r.sentiment.toUpperCase()}</span>
+          <span class="feed-reason">${escHtml(r.reason || '')}</span>
+          <span class="feed-conf">score: ${r.score} | conf: ${r.confidence}%</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ─────────────────────────────────────────────
+    //  SINGLE TEXT ANALYSIS
+    // ─────────────────────────────────────────────
+    async function analyzeSingle() {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text || isAnalyzing) return;
+
+      const scrollY = window.scrollY; // 🔥 save scroll
+
+      setLoading(true, 'Sending to ML model…');
+
+      try {
+        const r = await callMLModel(text);
+        r.text = text;
+        results.push(r);
+
+        const banner = document.getElementById('resultBanner');
+
+        document.getElementById('resultEmoji').textContent = EMOJIS[r.sentiment] || '🤔';
+
+        document.getElementById('resultSentiment').textContent =
+          `${r.sentiment.charAt(0).toUpperCase() + r.sentiment.slice(1)} Sentiment · Score: ${r.score} · Confidence: ${r.confidence}%`;
+
+        document.getElementById('resultReason').textContent = r.reason || '';
+
+        banner.className = r.sentiment;
+        banner.style.display = 'flex';
+
+        // ✅ click anywhere → hide
+        banner.onclick = () => {
+          banner.style.display = 'none';
+        };
+
+        setTimeout(() => updateDashboard(), 0);
+
+      } catch (e) {
+        alert('ML Model Error: ' + e.message);
+      }
+
+      setLoading(false);
+    }
+    // ─────────────────────────────────────────────
+    //  CSV UPLOAD — batch analyze
+    // ─────────────────────────────────────────────
+    async function handleCSV(e) {
+      const file = e.target.files[0]; if (!file) return;
+      document.getElementById('csvName').textContent = file.name;
+
+      const text = await file.text();
+      const lines = text.split('\n').filter(Boolean);
+      const header = lines[0].toLowerCase();
+      const cols = header.split(',');
+      const textIdx = cols.findIndex(c => c.includes('cleaned_text') || c.includes('text')) ?? 0;
+      const dataLines = lines.slice(1).filter(l => l.trim()).slice(0, 20); // max 20
+
+      setLoading(true, `Processing ${dataLines.length} rows with ML model…`);
+
+      for (let i = 0; i < dataLines.length; i++) {
+        const parts = dataLines[i].split(',');
+        const t = (parts[textIdx] || '').replace(/"/g, '').trim();
+        if (!t) continue;
+        document.getElementById('queueMsg').textContent = `ML analyzing row ${i + 1}/${dataLines.length}…`;
+        try {
+          const r = await callMLModel(t);
+          r.text = t;
+          results.push(r);
+          updateDashboard();
+        } catch (err) { console.error('Row error', err); }
+        await sleep(300); // rate limit buffer
+      }
+
+      setLoading(false);
+    }
+
+    // ─────────────────────────────────────────────
+    //  SAMPLE DATA
+    // ─────────────────────────────────────────────
+    const SAMPLES = [
+      "This product is absolutely amazing! Best purchase of the year.",
+      "Terrible experience. The delivery was late and item arrived damaged.",
+      "The package arrived on time. Nothing special to mention.",
+      "Incredible quality! Far exceeded all my expectations.",
+      "Worst customer service ever. They completely ignored my complaint.",
+      "Decent product for the price. Does what it says.",
+      "Super fast shipping and wonderful packaging. Very satisfied!",
+      "Total scam. Charged me twice and refused to refund.",
+      "It is fine. Ordered what I expected and got it.",
+      "Absolutely love this! My whole family enjoys it every day.",
+    ];
+
+    let sampleIdx = 0;
+
+    async function loadSample() {
+      if (isAnalyzing) return;
+      const text = SAMPLES[sampleIdx % SAMPLES.length];
+      sampleIdx++;
+      document.getElementById('inputText').value = text;
+      await analyzeSingle();
+    }
+
+    function clearAll() {
+      if (isAnalyzing) return;
+      results = [];
+      document.getElementById('inputText').value = '';
+      document.getElementById('resultBanner').style.display = 'none';
+      document.getElementById('csvName').textContent = 'No file selected';
+      document.getElementById('csvInput').value = '';
+      document.getElementById('avgConf').textContent = '—';
+      document.getElementById('accFill').style.width = '0%';
+      updateDashboard();
+    }
+
+    // ─────────────────────────────────────────────
+    //  UI HELPERS
+    // ─────────────────────────────────────────────
+    function setLoading(on, msg = '') {
+      isAnalyzing = on;
+      const btn = document.getElementById('analyzeBtn');
+      const sp = document.getElementById('singleSpinner');
+      const qs = document.getElementById('queueStrip');
+      btn.disabled = on;
+      sp.style.display = on ? 'block' : 'none';
+      if (on) {
+        qs.classList.add('show');
+        document.getElementById('queueMsg').textContent = msg;
+      } else {
+        qs.classList.remove('show');
+      }
+    }
+
+    function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+    // ─────────────────────────────────────────────
+    //  BOOT
+    // ─────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+      initCharts();
+      updateDashboard();
+      setTimeout(() => { document.getElementById('accFill').style.width = '0%'; }, 100);
+
+      document.getElementById('inputText').addEventListener('keydown', e => {
+        if (e.ctrlKey && e.key === 'Enter') analyzeSingle();
+      });
+    });
+  </script>
+</body>
+
+</html>
