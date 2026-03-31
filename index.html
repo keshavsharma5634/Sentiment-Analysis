@@ -1127,7 +1127,7 @@ Rules:
 - reason: brief NLP-style explanation`;
 
     async function callMLModel(text) {
-      const response = await fetch("sentiment-analysis-production-4b34.up.railway.app", {
+      const response = await fetch("https://sentiment-analysis-production-4b34.up.railway.app/predict", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
